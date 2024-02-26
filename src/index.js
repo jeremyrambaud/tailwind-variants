@@ -298,15 +298,26 @@ export const tv = (options, configProp) => {
         let isValid = true;
 
         for (const [key, value] of Object.entries(compoundVariantOptions)) {
-          const completeProps = getCompleteProps(key, slotProps);
+          const completeProps = {
+            ...defaultVariants,
+            ...propsWithoutUndefined,
+            ...props?.[key],
+            ...slotProps,
+          };
 
           if (Array.isArray(value)) {
-            if (!value.includes(completeProps[key])) {
+            if(typeof completeProps[key] === "object" && !value.some(item => Object.values(completeProps[key]).includes(item))) {
+              isValid = false;
+              break;
+            } else if (typeof completeProps[key] !== "object" && !value.includes(completeProps[key])) {
               isValid = false;
               break;
             }
           } else {
-            if (completeProps[key] !== value) {
+            if (typeof completeProps[key] === "object" && !Object.values(completeProps[key]).includes(value)) {
+              isValid = false;
+              break;
+            } else if (typeof completeProps[key] !== "object" && completeProps[key] !== value) {
               isValid = false;
               break;
             }
@@ -316,6 +327,27 @@ export const tv = (options, configProp) => {
         if (isValid) {
           tvClass && result.push(tvClass);
           tvClassName && result.push(tvClassName);
+
+          let isResponsiveValid = true;
+          let bp = [];
+          Object.entries(compoundVariantOptions).forEach(([variant, value]) => {
+            if(typeof props?.[variant] !== "object") {
+              isResponsiveValid = false;
+              return;
+            }
+
+            const breakpoint = Object.entries(props?.[variant] || {}).find(([bp, bpValue]) => bpValue === value);
+            breakpoint && bp.push(breakpoint[0]);
+          });
+
+          let responsiveClasses = [];
+
+          bp.forEach((breakpoint) => {
+            const responsiveClass = getScreenVariantValues(breakpoint, tvClass || tvClassName);
+            responsiveClasses = [...responsiveClass];
+          });
+
+          result.push(responsiveClasses);
         }
       }
 
